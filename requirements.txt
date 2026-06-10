@@ -1,0 +1,5 @@
+tqdm==4.66.3
+faker==25.2.0
+pydoll-python
+PyQt6
+psutil

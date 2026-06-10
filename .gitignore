@@ -1,0 +1,8 @@
+accounts.txt
+last_config.json
+*.exe
+*.zip
+saved_browsers.json
+__pycache__/
+main.py
+lib/
