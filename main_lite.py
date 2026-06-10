@@ -16,6 +16,36 @@ import atexit
 import shutil
 _FORCE_ENGLISH = False
 
+# ── Auto-installer ────────────────────────────────────────────────────────────
+def _ensure_dependencies():
+    import importlib.util, subprocess, sys, os
+    _PACKAGES = {
+        'tqdm':   'tqdm==4.66.3',
+        'faker':  'faker==25.2.0',
+        'pydoll': 'pydoll-python',
+        'PyQt6':  'PyQt6',
+        'psutil': 'psutil',
+        'rich':   'rich',
+    }
+    missing = [install for mod, install in _PACKAGES.items()
+               if importlib.util.find_spec(mod) is None]
+    if not missing:
+        return
+    print(f'[setup] Installing missing packages: {", ".join(missing)}')
+    req_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'requirements.txt')
+    if os.path.exists(req_file):
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '-r', req_file],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install'] + missing,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print('[setup] Done. Starting...\n')
+
+_ensure_dependencies()
+# ─────────────────────────────────────────────────────────────────────────────
+
 def _setup_unicode_terminal():
     global _FORCE_ENGLISH
     if sys.platform != 'win32':
@@ -533,9 +563,9 @@ class BrowserAutomation:
             if hard_error or body_error:
                 _err_reason = error_text or next((k for k in ERROR_BODY_KEYWORDS if k in page_body_txt), 'unknown error')
                 if any((k in _err_reason.lower() for k in ('captcha', 'robot', 'automated'))):
-                    log_cb(f'✗ {tr('captcha_failed')}', 'error')
+                    log_cb(f"✗ {tr('captcha_failed')}", 'error')
                 else:
-                    log_cb(f'✗ {tr('error_fill_form').format(e=_err_reason)}', 'error')
+                    log_cb(f"✗ {tr('error_fill_form').format(e=_err_reason)}", 'error')
                 if close_after:
                     await _safe_stop()
                 return {'email': email, 'password': password, 'success': False}
@@ -552,9 +582,9 @@ class BrowserAutomation:
             fallback_url = any((k in url_lower for k in FALLBACK_URL))
             success = exact_url or exact_txt or has_success_el or fallback_body or fallback_url
             if success:
-                log_cb(f'✓ {tr('registration_success')}', 'success')
+                log_cb(f"✓ {tr('registration_success')}", 'success')
             else:
-                log_cb(f'✗ {tr('step_failed')}', 'error')
+                log_cb(f"✗ {tr('step_failed')}", 'error')
             if close_after:
                 try:
                     if success and close_after_delay > 0:
@@ -564,12 +594,12 @@ class BrowserAutomation:
                     pass
             return {'email': email, 'password': password, 'success': success}
         except Exception as e:
-            log_cb(f'✗ {tr('error_fill_form').format(e=str(e)[:80])}', 'error')
+            log_cb(f"✗ {tr('error_fill_form').format(e=str(e)[:80])}", 'error')
             await _safe_stop()
             return {'email': email, 'password': password, 'success': False}
 
 def check_for_updates():
-    console.print(f'[cyan]{tr('checking_updates')}[/cyan]')
+    console.print(f"[cyan]{tr('checking_updates')}[/cyan]")
     old_exe = os.path.join(get_base(), 'mainrev-lite_old.exe')
     if os.path.exists(old_exe):
         try:
@@ -578,18 +608,18 @@ def check_for_updates():
             pass
     remote_version = get_remote_version()
     if remote_version is None:
-        console.print(f'[yellow]{tr('update_check_failed')}[/yellow]')
+        console.print(f"[yellow]{tr('update_check_failed')}[/yellow]")
         return
     local_version = get_local_version()
     if remote_version == local_version:
-        console.print(f'[green]{tr('up_to_date').format(local_version=local_version)}[/green]')
+        console.print(f"[green]{tr('up_to_date').format(local_version=local_version)}[/green]")
         return
-    console.print(f'\n[bold cyan]{'=' * 50}[/bold cyan]')
-    console.print(f'[bold yellow]{tr('update_available')}[/bold yellow]')
-    console.print(f'[cyan]{tr('current_version').format(local_version=local_version)}[/cyan]')
-    console.print(f'[cyan]{tr('new_version').format(remote_version=remote_version)}[/cyan]')
-    console.print(f'[bold cyan]{'=' * 50}[/bold cyan]')
-    console.print(f'[yellow]{tr('update_downloading')}[/yellow]\n')
+    console.print(f"\n[bold cyan]{'=' * 50}[/bold cyan]")
+    console.print(f"[bold yellow]{tr('update_available')}[/bold yellow]")
+    console.print(f"[cyan]{tr('current_version').format(local_version=local_version)}[/cyan]")
+    console.print(f"[cyan]{tr('new_version').format(remote_version=remote_version)}[/cyan]")
+    console.print(f"[bold cyan]{'=' * 50}[/bold cyan]")
+    console.print(f"[yellow]{tr('update_downloading')}[/yellow]\n")
     base = get_base()
     success = True
     if getattr(sys, 'frozen', False):
@@ -609,10 +639,10 @@ def check_for_updates():
     if not ok:
         success = False
     if not success:
-        console.print(f'\n[bold red]{tr('update_partial_fail')}[/bold red]')
+        console.print(f"\n[bold red]{tr('update_partial_fail')}[/bold red]")
         return
-    console.print(f'\n[bold green]{tr('update_complete')}[/bold green]')
-    console.print(f'[bold yellow]{tr('update_reopening')}[/bold yellow]\n')
+    console.print(f"\n[bold green]{tr('update_complete')}[/bold green]")
+    console.print(f"[bold yellow]{tr('update_reopening')}[/bold yellow]\n")
     skip = threading.Event()
 
     def wait_for_enter():
@@ -622,7 +652,7 @@ def check_for_updates():
     for i in range(5, 0, -1):
         if skip.is_set():
             break
-        console.print(f'[cyan]{tr('update_countdown').format(i=i)}[/cyan]', end='\r')
+        console.print(f"[cyan]{tr('update_countdown').format(i=i)}[/cyan]", end='\r')
         time.sleep(1)
     console.print()
     if getattr(sys, 'frozen', False):
@@ -687,39 +717,39 @@ def display_accounts(accounts):
     successful = [a for a in accounts if a['success']]
     if not successful:
         return
-    console.print(f'\n[bold cyan]{'=' * 50}[/bold cyan]')
-    console.print(f'[bold cyan]{tr('accounts_created')}[/bold cyan]')
-    console.print(f'[bold cyan]{'=' * 50}[/bold cyan]')
+    console.print(f"\n[bold cyan]{'=' * 50}[/bold cyan]")
+    console.print(f"[bold cyan]{tr('accounts_created')}[/bold cyan]")
+    console.print(f"[bold cyan]{'=' * 50}[/bold cyan]")
     for acc in successful:
-        console.print(f'[cyan]{tr('email_label')} {acc['email']}[/cyan]')
-        console.print(f'[cyan]{tr('password_display_label')} {acc['password']}[/cyan]')
+        console.print(f"[cyan]{tr('email_label')} {acc['email']}[/cyan]")
+        console.print(f"[cyan]{tr('password_display_label')} {acc['password']}[/cyan]")
         console.print('')
-    console.print(f'[bold cyan]{'=' * 50}[/bold cyan]\n')
+    console.print(f"[bold cyan]{'=' * 50}[/bold cyan]\n")
 
 async def run_accounts(plan_key, passw, count, browser_path, headless=False, close_after=True, close_after_delay=5, fill_speed='slow'):
     cfg = PLAN_CONFIGS[plan_key]
     automation = BrowserAutomation(cfg)
     accounts = []
     for x in range(count):
-        console.print(f'\n[bold cyan]{'─' * 40}[/bold cyan]')
-        console.print(f'[bold cyan]{tr('account_counter').format(x=x + 1, count=count)}[/bold cyan]')
-        console.print(f'[bold cyan]{'─' * 40}[/bold cyan]')
+        console.print(f"\n[bold cyan]{'─' * 40}[/bold cyan]")
+        console.print(f"[bold cyan]{tr('account_counter').format(x=x + 1, count=count)}[/bold cyan]")
+        console.print(f"[bold cyan]{'─' * 40}[/bold cyan]")
         _progress_start(tr('signup_process'))
         result = await automation.register_account(passw, browser_path, log_cb, headless=headless, close_after=close_after, close_after_delay=close_after_delay, fill_speed=fill_speed)
         accounts.append(result)
         if x < count - 1:
             delay = random.uniform(5, 10)
-            console.print(f'[yellow]{tr('waiting_next_account').format(delay=int(delay))}[/yellow]')
+            console.print(f"[yellow]{tr('waiting_next_account').format(delay=int(delay))}[/yellow]")
             await asyncio.sleep(delay)
     with open(os.path.join(get_base(), 'accounts.txt'), 'a') as f:
         for acc in accounts:
             if acc['success']:
-                f.write(f'{acc['email']} | {acc['password']}\n')
+                f.write(f"{acc['email']} | {acc['password']}\n")
     successful = sum((1 for a in accounts if a['success']))
-    console.print(f'\n[bold cyan]{'=' * 50}[/bold cyan]')
-    console.print(f'[bold green]✓ {tr('successfully_created_account').format(x=successful, executionCount=count)}[/bold green]')
-    console.print(f'[bold green]{tr('credentials_saved')}[/bold green]')
-    console.print(f'[bold cyan]{'=' * 50}[/bold cyan]')
+    console.print(f"\n[bold cyan]{'=' * 50}[/bold cyan]")
+    console.print(f"[bold green]✓ {tr('successfully_created_account').format(x=successful, executionCount=count)}[/bold green]")
+    console.print(f"[bold green]{tr('credentials_saved')}[/bold green]")
+    console.print(f"[bold cyan]{'=' * 50}[/bold cyan]")
     display_accounts(accounts)
 
 async def main():
@@ -735,20 +765,20 @@ async def main():
         silent = False
         close_after = True
         if last_config:
-            console.print(f'\n[bold cyan]{'=' * 50}[/bold cyan]')
-            console.print(f'[bold cyan]{tr('last_config_found')}[/bold cyan]')
-            console.print(f'[bold cyan]{'=' * 50}[/bold cyan]')
-            console.print(f'[cyan]{tr('browser_label')} {last_config.get('browser_path', tr('default_browser'))}[/cyan]')
-            console.print(f'[cyan]{tr('password_label_display')} {last_config.get('password', '')}[/cyan]')
-            console.print(f'[cyan]{tr('proxy_label_display')} {last_config.get('proxy', tr('no_proxy'))}[/cyan]')
-            console.print(f'[cyan]{tr('accounts_label')} {last_config.get('execution_count', 1)}[/cyan]')
+            console.print(f"\n[bold cyan]{'=' * 50}[/bold cyan]")
+            console.print(f"[bold cyan]{tr('last_config_found')}[/bold cyan]")
+            console.print(f"[bold cyan]{'=' * 50}[/bold cyan]")
+            console.print(f"[cyan]{tr('browser_label')} {last_config.get('browser_path', tr('default_browser'))}[/cyan]")
+            console.print(f"[cyan]{tr('password_label_display')} {last_config.get('password', '')}[/cyan]")
+            console.print(f"[cyan]{tr('proxy_label_display')} {last_config.get('proxy', tr('no_proxy'))}[/cyan]")
+            console.print(f"[cyan]{tr('accounts_label')} {last_config.get('execution_count', 1)}[/cyan]")
             plan_name = tr('seven_days') if last_config.get('plan') == '2' else tr('three_days')
-            console.print(f'[cyan]{tr('plan_label')} {plan_name}[/cyan]')
+            console.print(f"[cyan]{tr('plan_label')} {plan_name}[/cyan]")
             _speed_map = {'slow': tr('fill_speed_slow'), 'fast': tr('fill_speed_fast'), 'superfast': tr('fill_speed_superfast')}
-            console.print(f'[cyan]{tr('fill_speed_label')} {_speed_map.get(last_config.get('fill_speed', 'slow'), last_config.get('fill_speed', 'slow'))}[/cyan]')
-            console.print(f'[cyan]{(tr('menu_silent_on') if last_config.get('silent') else tr('menu_silent_off'))}[/cyan]')
-            console.print(f'[cyan]{(tr('menu_close_after_on') if last_config.get('close_after', True) else tr('menu_close_after_off'))}[/cyan]')
-            console.print(f'[bold cyan]{'=' * 50}[/bold cyan]\n')
+            console.print(f"[cyan]{tr('fill_speed_label')} {_speed_map.get(last_config.get('fill_speed', 'slow'), last_config.get('fill_speed', 'slow'))}[/cyan]")
+            console.print(f"[cyan]{(tr('menu_silent_on') if last_config.get('silent') else tr('menu_silent_off'))}[/cyan]")
+            console.print(f"[cyan]{(tr('menu_close_after_on') if last_config.get('close_after', True) else tr('menu_close_after_off'))}[/cyan]")
+            console.print(f"[bold cyan]{'=' * 50}[/bold cyan]\n")
             use_last = input(tr('use_last_config_prompt')).strip().lower()
             if use_last in ('y', 's', 'o', 'j', 'д'):
                 browser_path = last_config.get('browser_path', '')
@@ -763,48 +793,48 @@ async def main():
                 last_config = None
         if not last_config:
             while True:
-                browser_path = input(f'\n{tr('browser_path_info')}\n{tr('supported_browsers')}\n{tr('browser_executable_path')}').replace('"', '').replace("'", '')
+                browser_path = input(f"\n{tr('browser_path_info')}\n{tr('supported_browsers')}\n{tr('browser_executable_path')}").replace('"', '').replace("'", '')
                 if browser_path == '' or os.path.exists(browser_path):
                     break
-                console.print(f'[bold red]{tr('invalid_path')}[/bold red]')
+                console.print(f"[bold red]{tr('invalid_path')}[/bold red]")
             while True:
-                passw = input(f'\n{tr('password_info')}\n{tr('password_label')}')
+                passw = input(f"\n{tr('password_info')}\n{tr('password_label')}")
                 if passw == '':
                     passw = generate_random_password()
-                    console.print(f'[bold green]{tr('random_password_generated').format(passw=passw)}[/bold green]')
+                    console.print(f"[bold green]{tr('random_password_generated').format(passw=passw)}[/bold green]")
                     break
                 if not is_valid_password(passw):
-                    console.print(f'[bold red]{tr('password_not_meeting_requirements')}[/bold red]')
+                    console.print(f"[bold red]{tr('password_not_meeting_requirements')}[/bold red]")
                     continue
                 break
-            proxy = input(f'\n{tr('proxy_info')}\n{tr('proxy_label')}: ')
+            proxy = input(f"\n{tr('proxy_info')}\n{tr('proxy_label')}: ")
             while True:
-                raw = input(f'\n{tr('number_of_accounts_prompt')}')
+                raw = input(f"\n{tr('number_of_accounts_prompt')}")
                 try:
                     execution_count = int(raw) if raw.strip() else 1
                     break
                 except ValueError:
-                    console.print(f'[bold red]{tr('invalid_number')}[/bold red]')
-            console.print(f'\n{tr('plan_selection_title')}', style='bold cyan')
-            console.print(f'1 - {tr('plan_option_3days')}')
-            console.print(f'2 - {tr('plan_option_7days')}')
+                    console.print(f"[bold red]{tr('invalid_number')}[/bold red]")
+            console.print(f"\n{tr('plan_selection_title')}", style='bold cyan')
+            console.print(f"1 - {tr('plan_option_3days')}")
+            console.print(f"2 - {tr('plan_option_7days')}")
             escolha_plano = (await asyncio.to_thread(input, tr('plan_input_prompt'))).strip() or '1'
             if escolha_plano not in ('1', '2'):
                 escolha_plano = '1'
-            console.print(f'\n[bold cyan]{tr('fill_speed_label')}[/bold cyan]')
-            console.print(f'1 - {tr('fill_speed_slow')}')
-            console.print(f'2 - {tr('fill_speed_fast')}')
-            console.print(f'3 - {tr('fill_speed_superfast')}')
+            console.print(f"\n[bold cyan]{tr('fill_speed_label')}[/bold cyan]")
+            console.print(f"1 - {tr('fill_speed_slow')}")
+            console.print(f"2 - {tr('fill_speed_fast')}")
+            console.print(f"3 - {tr('fill_speed_superfast')}")
             _speed_raw = (await asyncio.to_thread(input, tr('fill_speed_prompt'))).strip() or '1'
             fill_speed = {'1': 'slow', '2': 'fast', '3': 'superfast'}.get(_speed_raw, 'slow')
-            _silent_raw = (await asyncio.to_thread(input, f'\n{tr('silent_mode_prompt')}')).strip().lower()
+            _silent_raw = (await asyncio.to_thread(input, f"\n{tr('silent_mode_prompt')}")).strip().lower()
             silent = _silent_raw in ('y', 's')
-            _close_raw = (await asyncio.to_thread(input, f'\n{tr('close_after_prompt')}')).strip().lower()
+            _close_raw = (await asyncio.to_thread(input, f"\n{tr('close_after_prompt')}")).strip().lower()
             close_after = _close_raw not in ('n', 'no', 'não', 'nao', 'нет', 'non', 'nein', 'لا', 'không')
             save_config(browser_path, passw, proxy, execution_count, escolha_plano, fill_speed, silent, close_after)
         plan_label = tr('seven_days') if escolha_plano == '2' else tr('three_days')
-        console.print(f'\n[bold cyan]{tr('account_generation_process')} - {plan_label}[/bold cyan]\n')
+        console.print(f"\n[bold cyan]{tr('account_generation_process')} - {plan_label}[/bold cyan]\n")
         await run_accounts(plan_key=escolha_plano, passw=passw, count=execution_count, browser_path=browser_path, headless=silent, close_after=close_after, close_after_delay=3, fill_speed=fill_speed)
-        console.print(f'\n[bold cyan]{'─' * 50}[/bold cyan]\n')
+        console.print(f"\n[bold cyan]{'─' * 50}[/bold cyan]\n")
 if __name__ == '__main__':
     asyncio.run(main())
