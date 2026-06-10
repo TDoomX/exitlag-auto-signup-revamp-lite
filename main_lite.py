@@ -167,10 +167,10 @@ def generate_random_password():
     return ''.join(chars)
 
 def gerar_email_aleatorio():
-    return ''.join((random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8))) + '@zylker.com'
+    return ''.join((random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8))) + '@juno.com'
 
 def gerar_email_plan2():
-    return ''.join((random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8))) + '@zylker.com'
+    return ''.join((random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8))) + '@juno.com'
 try:
     import psutil
     _PSUTIL_OK = True
